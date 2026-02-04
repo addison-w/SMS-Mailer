@@ -1,5 +1,11 @@
 // Type declarations for external modules without TypeScript support
 
+declare module 'react-native-battery-optimization-check' {
+  export function BatteryOptEnabled(): Promise<boolean>;
+  export function OpenOptimizationSettings(): void;
+  export function RequestDisableOptimization(): Promise<void>;
+}
+
 declare module '@maniac-tech/react-native-expo-read-sms' {
   export interface SmsPermissionResult {
     hasReceiveSmsPermission: boolean;

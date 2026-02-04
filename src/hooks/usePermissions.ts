@@ -1,7 +1,8 @@
 // src/hooks/usePermissions.ts
-import { useState, useEffect, useCallback } from 'react';
-import { Platform, Linking, Alert } from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { BatteryOptEnabled, RequestDisableOptimization } from 'react-native-battery-optimization-check';
 import { checkSmsPermissions, requestSmsPermissions } from '@/services/sms-listener';
 import type { PermissionStatus } from '@/types';
 
@@ -10,9 +11,9 @@ export function usePermissions() {
     sms: false,
     notifications: false,
     batteryOptimization: false,
-    backgroundActivity: false,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const appState = useRef(AppState.currentState);
 
   const checkPermissions = useCallback(async () => {
     setIsLoading(true);
@@ -24,18 +25,24 @@ export function usePermissions() {
       const smsStatus = await checkSmsPermissions();
       const smsGranted = smsStatus.hasReadSmsPermission && smsStatus.hasReceiveSmsPermission;
 
-      // Battery optimization - we can't easily check this, assume false
-      // User needs to manually verify
-      const batteryOptDisabled = false;
-
-      // Background activity - also needs manual verification
-      const backgroundActivityAllowed = false;
+      // Check battery optimization status (Android only)
+      // BatteryOptEnabled returns true if optimization IS enabled (which is bad for us)
+      // We want batteryOptimization=true when optimization is DISABLED
+      let batteryOptDisabled = false;
+      if (Platform.OS === 'android') {
+        try {
+          const isOptEnabled = await BatteryOptEnabled();
+          batteryOptDisabled = !isOptEnabled; // We want it disabled
+        } catch (error) {
+          console.error('Error checking battery optimization:', error);
+          batteryOptDisabled = false;
+        }
+      }
 
       setPermissions({
         sms: smsGranted,
         notifications: notifStatus === 'granted',
         batteryOptimization: batteryOptDisabled,
-        backgroundActivity: backgroundActivityAllowed,
       });
     } catch (error) {
       console.error('Error checking permissions:', error);
@@ -44,88 +51,53 @@ export function usePermissions() {
     }
   }, []);
 
+  // Check permissions on mount
   useEffect(() => {
     checkPermissions();
+  }, [checkPermissions]);
+
+  // Re-check permissions when app comes back to foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // App has come to foreground, re-check permissions
+        checkPermissions();
+      }
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
   }, [checkPermissions]);
 
   const requestNotifications = async () => {
     const { status } = await Notifications.requestPermissionsAsync();
     if (status === 'granted') {
       setPermissions((prev) => ({ ...prev, notifications: true }));
-    } else {
-      Alert.alert(
-        'Permission Required',
-        'Please enable notifications in your device settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => Linking.openSettings() },
-        ]
-      );
     }
+    // Re-check to get accurate state
+    await checkPermissions();
   };
 
   const requestSmsPermission = async () => {
-    const granted = await requestSmsPermissions();
-    if (granted) {
-      setPermissions((prev) => ({ ...prev, sms: true }));
-    } else {
-      Alert.alert(
-        'SMS Permission Required',
-        'Please grant SMS permissions to forward messages.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => Linking.openSettings() },
-        ]
-      );
-    }
+    await requestSmsPermissions();
+    // Re-check to get accurate state
+    await checkPermissions();
   };
 
   const requestBatteryOptimization = async () => {
     if (Platform.OS !== 'android') return;
 
-    Alert.alert(
-      'Battery Optimization',
-      'To keep SMS Mailer running reliably, please disable battery optimization for this app in your device settings.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open Settings',
-          onPress: async () => {
-            try {
-              await Linking.openSettings();
-              // Assume user enabled it after opening settings
-              setPermissions((prev) => ({ ...prev, batteryOptimization: true }));
-            } catch (error) {
-              Alert.alert('Error', 'Unable to open settings');
-            }
-          }
-        },
-      ]
-    );
-  };
-
-  const requestBackgroundActivity = async () => {
-    if (Platform.OS !== 'android') return;
-
-    Alert.alert(
-      'Background Activity',
-      'To allow SMS Mailer to run in the background, please set background activity to "Unrestricted" in the app settings.\n\nGo to: Battery → Unrestricted',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open Settings',
-          onPress: async () => {
-            try {
-              await Linking.openSettings();
-              // Assume user enabled it after opening settings
-              setPermissions((prev) => ({ ...prev, backgroundActivity: true }));
-            } catch (error) {
-              Alert.alert('Error', 'Unable to open settings');
-            }
-          }
-        },
-      ]
-    );
+    try {
+      // This shows a system dialog to disable battery optimization
+      await RequestDisableOptimization();
+    } catch (error) {
+      console.error('Error requesting battery optimization:', error);
+    }
+    // Status will be re-checked when app returns to foreground
   };
 
   return {
@@ -135,6 +107,5 @@ export function usePermissions() {
     requestNotifications,
     requestSmsPermission,
     requestBatteryOptimization,
-    requestBackgroundActivity,
   };
 }
