@@ -42,3 +42,4 @@ yarn-error.*
 
 # claude-mem context files
 **/CLAUDE.md
+build-*.apk
