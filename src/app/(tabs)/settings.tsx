@@ -1,11 +1,12 @@
 // src/app/(tabs)/settings.tsx
 import { View, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Button, Input, Card, Select } from '@/components/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useThemeStore } from '@/stores/theme';
 import { testConnection } from '@/services/email-sender';
 
 const SECURITY_OPTIONS = [
@@ -14,9 +15,16 @@ const SECURITY_OPTIONS = [
   { label: 'SSL (Port 465)', value: 'ssl' },
 ];
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', icon: 'white-balance-sunny' },
+  { value: 'dark', label: 'Dark', icon: 'moon-waning-crescent' },
+  { value: 'system', label: 'System', icon: 'cellphone' },
+] as const;
+
 export default function SettingsScreen() {
   const theme = useAppTheme();
   const { smtp, setSmtp, savePassword, loadPassword, isConfigured } = useSettingsStore();
+  const { colorScheme, setColorScheme } = useThemeStore();
   const [password, setPassword] = useState('');
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,7 +91,25 @@ export default function SettingsScreen() {
         style={styles.keyboardView}
       >
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-          <Card title="SMTP SERVER">
+          {/* Theme Selection */}
+          <Card title="APPEARANCE">
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
+              Choose your preferred color scheme
+            </Text>
+            <SegmentedButtons
+              value={colorScheme}
+              onValueChange={(value) => setColorScheme(value as 'light' | 'dark' | 'system')}
+              buttons={THEME_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+                icon: opt.icon,
+                accessibilityLabel: `${opt.label} theme`,
+              }))}
+              style={styles.segmentedButtons}
+            />
+          </Card>
+
+          <Card title="SMTP SERVER" style={styles.card}>
             <Input
               label="Host"
               value={smtp.host}
@@ -204,6 +230,9 @@ const styles = StyleSheet.create({
   },
   card: {
     marginTop: 16,
+  },
+  segmentedButtons: {
+    marginTop: 4,
   },
   buttons: {
     marginTop: 24,
