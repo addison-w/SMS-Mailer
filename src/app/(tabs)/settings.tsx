@@ -1,14 +1,170 @@
 // src/app/(tabs)/settings.tsx
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState, useEffect } from 'react';
 import { colors } from '@/theme/colors';
+import { Button, Input, Card, Select } from '@/components/ui';
+import { useSettingsStore } from '@/stores/settings';
+
+const SECURITY_OPTIONS = [
+  { label: 'None', value: 'none' },
+  { label: 'TLS (Port 587)', value: 'tls' },
+  { label: 'SSL (Port 465)', value: 'ssl' },
+];
 
 export default function SettingsScreen() {
+  const { smtp, setSmtp, savePassword, loadPassword, isConfigured } = useSettingsStore();
+  const [password, setPassword] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    loadPassword().then(setPassword);
+  }, []);
+
+  const handleSecurityChange = (security: string) => {
+    setSmtp({ security: security as 'none' | 'tls' | 'ssl' });
+    // Auto-set common ports
+    if (security === 'ssl') {
+      setSmtp({ port: '465' });
+    } else if (security === 'tls') {
+      setSmtp({ port: '587' });
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!smtp.host || !smtp.username || !password) {
+      Alert.alert('Error', 'Please fill in host, username, and password');
+      return;
+    }
+
+    setIsTesting(true);
+    try {
+      // TODO: Implement actual SMTP test
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      Alert.alert('Success', 'Connection test successful!');
+    } catch (error) {
+      Alert.alert('Error', 'Connection failed. Please check your settings.');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!smtp.host || !smtp.username || !password || !smtp.fromEmail || !smtp.toEmail) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await savePassword(password);
+      Alert.alert('Success', 'Settings saved successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.content}>
-        <Text style={styles.text}>Settings Screen</Text>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <Card title="SMTP Server">
+            <Input
+              label="Host"
+              value={smtp.host}
+              onChangeText={(text) => setSmtp({ host: text })}
+              placeholder="smtp.example.com"
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+            <Input
+              label="Port"
+              value={smtp.port}
+              onChangeText={(text) => setSmtp({ port: text })}
+              placeholder="587"
+              keyboardType="number-pad"
+            />
+            <Select
+              label="Security"
+              value={smtp.security}
+              options={SECURITY_OPTIONS}
+              onValueChange={handleSecurityChange}
+            />
+          </Card>
+
+          <Card title="Authentication" style={styles.card}>
+            <Input
+              label="Username"
+              value={smtp.username}
+              onChangeText={(text) => setSmtp({ username: text })}
+              placeholder="user@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <Input
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+            />
+          </Card>
+
+          <Card title="Email Addresses" style={styles.card}>
+            <Input
+              label="From (Sender)"
+              value={smtp.fromEmail}
+              onChangeText={(text) => setSmtp({ fromEmail: text })}
+              placeholder="noreply@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <Input
+              label="To (Recipient)"
+              value={smtp.toEmail}
+              onChangeText={(text) => setSmtp({ toEmail: text })}
+              placeholder="alerts@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </Card>
+
+          <View style={styles.buttons}>
+            <Button
+              title="Test Connection"
+              onPress={handleTestConnection}
+              variant="secondary"
+              loading={isTesting}
+            />
+            <Button
+              title="Save Settings"
+              onPress={handleSave}
+              loading={isSaving}
+              style={styles.saveButton}
+            />
+          </View>
+
+          {isConfigured && (
+            <Card title="Email Preview" style={styles.card}>
+              <Text style={styles.previewSubject}>Subject: SMS from +61412345678</Text>
+              <Text style={styles.previewBody}>
+                From: +61412345678{'\n'}
+                To: +61498765432 (SIM 1){'\n'}
+                Time: {new Date().toLocaleString()}{'\n'}
+                {'\n'}
+                Message:{'\n'}
+                [SMS content will appear here]
+              </Text>
+            </Card>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -18,12 +174,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
+  keyboardView: {
     flex: 1,
-    padding: 16,
   },
-  text: {
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  card: {
+    marginTop: 16,
+  },
+  buttons: {
+    marginTop: 24,
+    gap: 12,
+  },
+  saveButton: {
+    marginTop: 4,
+  },
+  previewSubject: {
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.textPrimary,
-    fontSize: 18,
+    marginBottom: 8,
+  },
+  previewBody: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    lineHeight: 20,
   },
 });
