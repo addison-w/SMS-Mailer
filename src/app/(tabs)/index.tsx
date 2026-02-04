@@ -2,6 +2,15 @@
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSpring,
+  Easing,
+} from 'react-native-reanimated';
+import { useEffect } from 'react';
 import { colors } from '@/theme/colors';
 import { Card, Button } from '@/components/ui';
 import { PermissionCard } from '@/components/features/PermissionCard';
@@ -11,11 +20,13 @@ import { useHistoryStore } from '@/stores/history';
 import { useSettingsStore } from '@/stores/settings';
 import { startBackgroundService, stopBackgroundService } from '@/services/background';
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export default function StatusScreen() {
   const router = useRouter();
   const { isRunning, setRunning } = useServiceStore();
   const { isConfigured } = useSettingsStore();
-  const { getPending, getFailed } = useHistoryStore();
+  const { getPending, getFailed, totalForwarded } = useHistoryStore();
   const {
     permissions,
     isLoading,
@@ -26,6 +37,38 @@ export default function StatusScreen() {
 
   const pendingCount = getPending().length;
   const failedCount = getFailed().length;
+
+  // Animated pulse for running indicator
+  const pulseScale = useSharedValue(1);
+  const pulseOpacity = useSharedValue(0.6);
+  const statsScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (isRunning) {
+      pulseScale.value = withRepeat(
+        withTiming(1.4, { duration: 1500, easing: Easing.out(Easing.ease) }),
+        -1,
+        false
+      );
+      pulseOpacity.value = withRepeat(
+        withTiming(0, { duration: 1500, easing: Easing.out(Easing.ease) }),
+        -1,
+        false
+      );
+    } else {
+      pulseScale.value = withTiming(1);
+      pulseOpacity.value = withTiming(0);
+    }
+  }, [isRunning]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+    opacity: pulseOpacity.value,
+  }));
+
+  const statsAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: statsScale.value }],
+  }));
 
   const handleToggleService = async () => {
     if (!isConfigured) {
@@ -43,19 +86,39 @@ export default function StatusScreen() {
     }
   };
 
+  const handleStatsPress = () => {
+    statsScale.value = withSpring(0.95, { damping: 15 }, () => {
+      statsScale.value = withSpring(1);
+    });
+    router.push('/history');
+  };
+
   const allPermissionsGranted =
     permissions.sms && permissions.notifications && permissions.batteryOptimization;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* Service Status */}
-        <Card>
-          <View style={styles.statusHeader}>
-            <Text style={styles.statusLabel}>SERVICE STATUS</Text>
-            <View style={[styles.statusBadge, isRunning ? styles.statusRunning : styles.statusStopped]}>
-              <Text style={styles.statusDot}>●</Text>
-              <Text style={styles.statusText}>{isRunning ? 'Running' : 'Stopped'}</Text>
+        {/* Hero Service Status */}
+        <Card delay={0}>
+          <View style={styles.heroContainer}>
+            <View style={styles.statusIndicatorContainer}>
+              {isRunning && (
+                <Animated.View style={[styles.pulse, pulseStyle]} />
+              )}
+              <View style={[styles.statusDot, isRunning ? styles.dotRunning : styles.dotStopped]} />
+            </View>
+            <View style={styles.heroText}>
+              <Text style={styles.heroTitle}>
+                {isRunning ? 'Service Active' : 'Service Stopped'}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                {isRunning
+                  ? 'Forwarding SMS to email'
+                  : isConfigured
+                    ? 'Tap below to start forwarding'
+                    : 'Configure settings to begin'}
+              </Text>
             </View>
           </View>
           <Button
@@ -64,29 +127,53 @@ export default function StatusScreen() {
             variant={isRunning ? 'danger' : 'primary'}
             disabled={!allPermissionsGranted && isConfigured}
           />
-          {!isConfigured && (
-            <Text style={styles.hint}>Configure SMTP settings to start the service</Text>
-          )}
           {isConfigured && !allPermissionsGranted && (
-            <Text style={styles.hint}>Grant all permissions to start the service</Text>
+            <Text style={styles.hint}>Grant all permissions below to start</Text>
           )}
         </Card>
 
+        {/* Quick Stats */}
+        <AnimatedPressable onPress={handleStatsPress} style={statsAnimatedStyle}>
+          <Card delay={100}>
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{totalForwarded}</Text>
+                <Text style={styles.statLabel}>Forwarded</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, styles.statPending]}>{pendingCount}</Text>
+                <Text style={styles.statLabel}>Pending</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, failedCount > 0 && styles.statError]}>
+                  {failedCount}
+                </Text>
+                <Text style={styles.statLabel}>Failed</Text>
+              </View>
+            </View>
+          </Card>
+        </AnimatedPressable>
+
         {/* Permissions */}
         <Text style={styles.sectionTitle}>PERMISSIONS</Text>
+        <Text style={styles.sectionSubtitle}>Required for reliable SMS forwarding</Text>
 
         <PermissionCard
-          title="SMS Permission"
+          title="SMS Access"
           granted={permissions.sms}
           onRequestPermission={requestSmsPermission}
           actionLabel="Grant"
+          delay={200}
         />
 
         <PermissionCard
-          title="Notification Access"
+          title="Notifications"
           granted={permissions.notifications}
           onRequestPermission={requestNotifications}
           actionLabel="Enable"
+          delay={250}
         />
 
         <PermissionCard
@@ -94,24 +181,8 @@ export default function StatusScreen() {
           granted={permissions.batteryOptimization}
           onRequestPermission={requestBatteryOptimization}
           actionLabel="Disable"
+          delay={300}
         />
-
-        {/* Quick Stats */}
-        <Card title="QUICK STATS" style={styles.statsCard}>
-          <Pressable style={styles.statsRow} onPress={() => router.push('/history')}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{pendingCount}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, failedCount > 0 && styles.statError]}>
-                {failedCount}
-              </Text>
-              <Text style={styles.statLabel}>Failed</Text>
-            </View>
-          </Pressable>
-        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -127,83 +198,102 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 32,
   },
-  statusHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  statusLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
-  },
-  statusBadge: {
+  heroContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
+    marginBottom: 20,
   },
-  statusRunning: {
-    backgroundColor: colors.success + '20',
+  statusIndicatorContainer: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
-  statusStopped: {
-    backgroundColor: colors.textMuted + '20',
+  pulse: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.success,
   },
   statusDot: {
-    fontSize: 10,
-    color: colors.success,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '600',
+  dotRunning: {
+    backgroundColor: colors.success,
+  },
+  dotStopped: {
+    backgroundColor: colors.textMuted,
+  },
+  heroText: {
+    flex: 1,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
   },
   hint: {
-    fontSize: 12,
-    color: colors.textMuted,
+    fontSize: 13,
+    color: colors.warning,
     textAlign: 'center',
     marginTop: 12,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  statsCard: {
-    marginTop: 24,
-  },
-  statsRow: {
+  statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  stat: {
+  statItem: {
     flex: 1,
     alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border,
+    paddingVertical: 4,
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: colors.textPrimary,
+  },
+  statPending: {
+    color: colors.warning,
   },
   statError: {
     color: colors.error,
   },
   statLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textMuted,
     marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: colors.border,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1,
+    marginTop: 28,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 16,
   },
 });

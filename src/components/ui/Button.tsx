@@ -1,6 +1,14 @@
 // src/components/ui/Button.tsx
-import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
+import { Text, StyleSheet, ActivityIndicator, ViewStyle, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { colors } from '@/theme/colors';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ButtonProps {
   title: string;
@@ -19,17 +27,37 @@ export function Button({
   loading = false,
   style,
 }: ButtonProps) {
+  const scale = useSharedValue(1);
   const isDisabled = disabled || loading;
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  };
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  };
+
   return (
-    <Pressable
-      onPress={onPress}
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={isDisabled}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         styles[variant],
         isDisabled && styles.disabled,
-        pressed && styles.pressed,
+        animatedStyle,
         style,
       ]}
     >
@@ -38,7 +66,7 @@ export function Button({
       ) : (
         <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -46,18 +74,18 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 52,
   },
   primary: {
     backgroundColor: colors.primary,
   },
   secondary: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
   },
   danger: {
     backgroundColor: colors.error,
@@ -65,18 +93,16 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  pressed: {
-    opacity: 0.8,
-  },
   text: {
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   primaryText: {
     color: colors.textPrimary,
   },
   secondaryText: {
-    color: colors.primary,
+    color: colors.textPrimary,
   },
   dangerText: {
     color: colors.textPrimary,
