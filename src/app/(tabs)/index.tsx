@@ -1,5 +1,5 @@
 // src/app/(tabs)/index.tsx
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
@@ -9,6 +9,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useServiceStore } from '@/stores/service';
 import { useHistoryStore } from '@/stores/history';
 import { useSettingsStore } from '@/stores/settings';
+import { startBackgroundService, stopBackgroundService } from '@/services/background';
 
 export default function StatusScreen() {
   const router = useRouter();
@@ -26,13 +27,20 @@ export default function StatusScreen() {
   const pendingCount = getPending().length;
   const failedCount = getFailed().length;
 
-  const handleToggleService = () => {
+  const handleToggleService = async () => {
     if (!isConfigured) {
       router.push('/settings');
       return;
     }
-    // TODO: Actually start/stop the background service
-    setRunning(!isRunning);
+
+    if (isRunning) {
+      await stopBackgroundService();
+    } else {
+      const started = await startBackgroundService();
+      if (!started) {
+        Alert.alert('Error', 'Failed to start the service. Please check permissions.');
+      }
+    }
   };
 
   const allPermissionsGranted =
