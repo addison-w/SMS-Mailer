@@ -36,7 +36,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./android-manifest.plugin.js"
     ]
   }
 }
