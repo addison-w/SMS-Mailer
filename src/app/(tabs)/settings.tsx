@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { colors } from '@/theme/colors';
 import { Button, Input, Card, Select } from '@/components/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { testConnection } from '@/services/email-sender';
 
 const SECURITY_OPTIONS = [
   { label: 'None', value: 'none' },
@@ -33,16 +34,19 @@ export default function SettingsScreen() {
   };
 
   const handleTestConnection = async () => {
-    if (!smtp.host || !smtp.username || !password) {
-      Alert.alert('Error', 'Please fill in host, username, and password');
+    if (!smtp.host || !smtp.username || !password || !smtp.toEmail) {
+      Alert.alert('Error', 'Please fill in host, username, password, and recipient email');
       return;
     }
 
     setIsTesting(true);
     try {
-      // TODO: Implement actual SMTP test
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      Alert.alert('Success', 'Connection test successful!');
+      const result = await testConnection(smtp, password);
+      if (result.success) {
+        Alert.alert('Success', 'Test email sent successfully! Check your inbox.');
+      } else {
+        Alert.alert('Error', result.error || 'Connection failed. Please check your settings.');
+      }
     } catch (error) {
       Alert.alert('Error', 'Connection failed. Please check your settings.');
     } finally {
