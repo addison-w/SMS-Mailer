@@ -38,6 +38,12 @@
       "expo-router",
       "expo-secure-store",
       "./android-manifest.plugin.js"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "46bf9441-6db5-4f52-9b25-aaaec540a94c"
+      }
+    }
   }
 }

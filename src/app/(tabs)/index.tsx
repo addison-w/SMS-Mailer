@@ -96,6 +96,11 @@ export default function StatusScreen() {
           actionLabel="Disable"
         />
 
+        <PermissionCard
+          title="Background Running"
+          granted={isRunning}
+        />
+
         {/* Quick Stats */}
         <Card title="QUICK STATS" style={styles.statsCard}>
           <Pressable style={styles.statsRow} onPress={() => router.push('/history')}>
