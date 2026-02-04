@@ -1,18 +1,8 @@
 // src/components/features/PermissionCard.tsx
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  useAnimatedProps,
-  Easing,
-} from 'react-native-reanimated';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { colors } from '@/theme/colors';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PermissionCardProps {
   title: string;
@@ -29,55 +19,64 @@ export function PermissionCard({
   actionLabel = 'Enable',
   delay = 0,
 }: PermissionCardProps) {
-  const scale = useSharedValue(1);
-  const buttonScale = useSharedValue(1);
-  const opacity = useSharedValue(0);
-  const translateX = useSharedValue(-20);
-  const iconScale = useSharedValue(granted ? 1 : 0.8);
+  const scale = useRef(new Animated.Value(1)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const iconScale = useRef(new Animated.Value(granted ? 1 : 0.8)).current;
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      opacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
-      translateX.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.cubic) });
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }, delay);
     return () => clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
-    iconScale.value = withSpring(granted ? 1.2 : 0.8, { damping: 10 }, () => {
-      iconScale.value = withSpring(1);
-    });
+    Animated.sequence([
+      Animated.spring(iconScale, {
+        toValue: granted ? 1.2 : 0.8,
+        useNativeDriver: true,
+      }),
+      Animated.spring(iconScale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
     if (granted) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   }, [granted]);
 
-  const cardAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
-  const iconAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: iconScale.value }],
-  }));
-
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+    Animated.spring(scale, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    buttonScale.value = withSpring(0.9, { damping: 15 }, () => {
-      buttonScale.value = withSpring(1);
-    });
+    Animated.sequence([
+      Animated.spring(buttonScale, {
+        toValue: 0.9,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
     onRequestPermission?.();
   };
 
@@ -86,11 +85,11 @@ export function PermissionCard({
       style={[
         styles.card,
         granted ? styles.cardGranted : styles.cardDenied,
-        cardAnimatedStyle,
+        { opacity, transform: [{ scale }] },
       ]}
     >
       <View style={styles.row}>
-        <Animated.View style={[styles.iconContainer, granted ? styles.iconGranted : styles.iconDenied, iconAnimatedStyle]}>
+        <Animated.View style={[styles.iconContainer, granted ? styles.iconGranted : styles.iconDenied, { transform: [{ scale: iconScale }] }]}>
           <Text style={[styles.icon, granted ? styles.iconTextGranted : styles.iconTextDenied]}>
             {granted ? '✓' : '!'}
           </Text>
@@ -98,12 +97,14 @@ export function PermissionCard({
         <Text style={styles.title}>{title}</Text>
       </View>
       {!granted && onRequestPermission && (
-        <AnimatedPressable
-          style={[styles.button, buttonAnimatedStyle]}
-          onPress={handleButtonPress}
-        >
-          <Text style={styles.buttonText}>{actionLabel}</Text>
-        </AnimatedPressable>
+        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+          <Pressable
+            style={styles.button}
+            onPress={handleButtonPress}
+          >
+            <Text style={styles.buttonText}>{actionLabel}</Text>
+          </Pressable>
+        </Animated.View>
       )}
       {granted && (
         <Text style={styles.grantedLabel}>Granted</Text>

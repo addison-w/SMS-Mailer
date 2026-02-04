@@ -1,12 +1,6 @@
 // src/components/ui/Card.tsx
-import { Text, StyleSheet, ViewStyle } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  withTiming,
-  useSharedValue,
-  Easing,
-} from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { Text, StyleSheet, ViewStyle, Animated } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { colors } from '@/theme/colors';
 
 interface CardProps {
@@ -17,24 +11,35 @@ interface CardProps {
 }
 
 export function Card({ title, children, style, delay = 0 }: CardProps) {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(12);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(12)).current;
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      opacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
-      translateY.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }, delay);
     return () => clearTimeout(timeout);
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-
   return (
-    <Animated.View style={[styles.card, animatedStyle, style]}>
+    <Animated.View
+      style={[
+        styles.card,
+        { opacity, transform: [{ translateY }] },
+        style,
+      ]}
+    >
       {title && <Text style={styles.title}>{title}</Text>}
       {children}
     </Animated.View>

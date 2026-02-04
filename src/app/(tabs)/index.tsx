@@ -1,16 +1,8 @@
 // src/app/(tabs)/index.tsx
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSpring,
-  Easing,
-} from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { colors } from '@/theme/colors';
 import { Card, Button } from '@/components/ui';
 import { PermissionCard } from '@/components/features/PermissionCard';
@@ -19,8 +11,6 @@ import { useServiceStore } from '@/stores/service';
 import { useHistoryStore } from '@/stores/history';
 import { useSettingsStore } from '@/stores/settings';
 import { startBackgroundService, stopBackgroundService } from '@/services/background';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function StatusScreen() {
   const router = useRouter();
@@ -39,36 +29,51 @@ export default function StatusScreen() {
   const failedCount = getFailed().length;
 
   // Animated pulse for running indicator
-  const pulseScale = useSharedValue(1);
-  const pulseOpacity = useSharedValue(0.6);
-  const statsScale = useSharedValue(1);
+  const pulseScale = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+  const statsScale = useRef(new Animated.Value(1)).current;
+  const pulseAnimation = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (isRunning) {
-      pulseScale.value = withRepeat(
-        withTiming(1.4, { duration: 1500, easing: Easing.out(Easing.ease) }),
-        -1,
-        false
+      pulseAnimation.current = Animated.loop(
+        Animated.parallel([
+          Animated.timing(pulseScale, {
+            toValue: 1.4,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseOpacity, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
       );
-      pulseOpacity.value = withRepeat(
-        withTiming(0, { duration: 1500, easing: Easing.out(Easing.ease) }),
-        -1,
-        false
-      );
+      pulseAnimation.current.start();
     } else {
-      pulseScale.value = withTiming(1);
-      pulseOpacity.value = withTiming(0);
+      if (pulseAnimation.current) {
+        pulseAnimation.current.stop();
+      }
+      Animated.parallel([
+        Animated.timing(pulseScale, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
+    return () => {
+      if (pulseAnimation.current) {
+        pulseAnimation.current.stop();
+      }
+    };
   }, [isRunning]);
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseScale.value }],
-    opacity: pulseOpacity.value,
-  }));
-
-  const statsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: statsScale.value }],
-  }));
 
   const handleToggleService = async () => {
     if (!isConfigured) {
@@ -87,9 +92,16 @@ export default function StatusScreen() {
   };
 
   const handleStatsPress = () => {
-    statsScale.value = withSpring(0.95, { damping: 15 }, () => {
-      statsScale.value = withSpring(1);
-    });
+    Animated.sequence([
+      Animated.spring(statsScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }),
+      Animated.spring(statsScale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
     router.push('/history');
   };
 
@@ -104,7 +116,7 @@ export default function StatusScreen() {
           <View style={styles.heroContainer}>
             <View style={styles.statusIndicatorContainer}>
               {isRunning && (
-                <Animated.View style={[styles.pulse, pulseStyle]} />
+                <Animated.View style={[styles.pulse, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]} />
               )}
               <View style={[styles.statusDot, isRunning ? styles.dotRunning : styles.dotStopped]} />
             </View>
@@ -133,28 +145,30 @@ export default function StatusScreen() {
         </Card>
 
         {/* Quick Stats */}
-        <AnimatedPressable onPress={handleStatsPress} style={statsAnimatedStyle}>
-          <Card delay={100}>
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{totalForwarded}</Text>
-                <Text style={styles.statLabel}>Forwarded</Text>
+        <Pressable onPress={handleStatsPress}>
+          <Animated.View style={{ transform: [{ scale: statsScale }] }}>
+            <Card delay={100}>
+              <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{totalForwarded}</Text>
+                  <Text style={styles.statLabel}>Forwarded</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, styles.statPending]}>{pendingCount}</Text>
+                  <Text style={styles.statLabel}>Pending</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, failedCount > 0 && styles.statError]}>
+                    {failedCount}
+                  </Text>
+                  <Text style={styles.statLabel}>Failed</Text>
+                </View>
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, styles.statPending]}>{pendingCount}</Text>
-                <Text style={styles.statLabel}>Pending</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, failedCount > 0 && styles.statError]}>
-                  {failedCount}
-                </Text>
-                <Text style={styles.statLabel}>Failed</Text>
-              </View>
-            </View>
-          </Card>
-        </AnimatedPressable>
+            </Card>
+          </Animated.View>
+        </Pressable>
 
         {/* Permissions */}
         <Text style={styles.sectionTitle}>PERMISSIONS</Text>

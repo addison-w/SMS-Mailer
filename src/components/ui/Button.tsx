@@ -1,14 +1,8 @@
 // src/components/ui/Button.tsx
-import { Text, StyleSheet, ActivityIndicator, ViewStyle, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import { Text, StyleSheet, ActivityIndicator, ViewStyle, Pressable, Animated } from 'react-native';
+import { useRef } from 'react';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/theme/colors';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ButtonProps {
   title: string;
@@ -27,19 +21,21 @@ export function Button({
   loading = false,
   style,
 }: ButtonProps) {
-  const scale = useSharedValue(1);
+  const scale = useRef(new Animated.Value(1)).current;
   const isDisabled = disabled || loading;
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   const handlePressIn = () => {
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+    Animated.spring(scale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePress = () => {
@@ -48,25 +44,26 @@ export function Button({
   };
 
   return (
-    <AnimatedPressable
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={isDisabled}
-      style={[
-        styles.button,
-        styles[variant],
-        isDisabled && styles.disabled,
-        animatedStyle,
-        style,
-      ]}
-    >
-      {loading ? (
-        <ActivityIndicator color={variant === 'secondary' ? colors.primary : colors.textPrimary} />
-      ) : (
-        <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
-      )}
-    </AnimatedPressable>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        style={[
+          styles.button,
+          styles[variant],
+          isDisabled && styles.disabled,
+          style,
+        ]}
+      >
+        {loading ? (
+          <ActivityIndicator color={variant === 'secondary' ? colors.primary : colors.textPrimary} />
+        ) : (
+          <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 

@@ -14,6 +14,43 @@ module.exports = function withSmsMailerPermissions(config) {
 
       const mainApplication = androidManifest.manifest.application[0];
 
+      // Add FOREGROUND_SERVICE_DATA_SYNC permission for Android 14+
+      if (!androidManifest.manifest['uses-permission']) {
+        androidManifest.manifest['uses-permission'] = [];
+      }
+
+      const hasForegroundServiceDataSync = androidManifest.manifest['uses-permission'].some(
+        (perm) => perm.$?.['android:name'] === 'android.permission.FOREGROUND_SERVICE_DATA_SYNC'
+      );
+
+      if (!hasForegroundServiceDataSync) {
+        androidManifest.manifest['uses-permission'].push({
+          $: { 'android:name': 'android.permission.FOREGROUND_SERVICE_DATA_SYNC' },
+        });
+      }
+
+      // Add/update RNBackgroundActionsTask service with foregroundServiceType
+      if (!mainApplication.service) {
+        mainApplication.service = [];
+      }
+
+      const bgActionsService = mainApplication.service.find(
+        (service) => service.$?.['android:name'] === 'com.asterinet.react.bgactions.RNBackgroundActionsTask'
+      );
+
+      if (bgActionsService) {
+        // Update existing service declaration
+        bgActionsService.$['android:foregroundServiceType'] = 'dataSync';
+      } else {
+        // Add new service declaration
+        mainApplication.service.push({
+          $: {
+            'android:name': 'com.asterinet.react.bgactions.RNBackgroundActionsTask',
+            'android:foregroundServiceType': 'dataSync',
+          },
+        });
+      }
+
       // Add intent filter for deep linking
       if (!mainApplication.activity) {
         console.warn('SMS Mailer plugin: No activity array found');

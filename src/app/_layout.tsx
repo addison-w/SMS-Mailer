@@ -2,15 +2,39 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors } from '@/theme/colors';
+import { View, ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
+import { PaperProvider } from 'react-native-paper';
+import {
+  useFonts,
+  Roboto_400Regular,
+  Roboto_500Medium,
+  Roboto_700Bold,
+} from '@expo-google-fonts/roboto';
+import { lightTheme, darkTheme } from '@/theme/theme';
 import { useOnboardingStore } from '@/stores/onboarding';
+import { useThemeStore } from '@/stores/theme';
 
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const { hasCompletedOnboarding } = useOnboardingStore();
+  const { colorScheme: themePreference } = useThemeStore();
+  const systemColorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
+
+  const [fontsLoaded] = useFonts({
+    Roboto_400Regular,
+    Roboto_500Medium,
+    Roboto_700Bold,
+  });
+
+  // Determine actual color scheme
+  const isDark =
+    themePreference === 'system'
+      ? systemColorScheme === 'dark'
+      : themePreference === 'dark';
+
+  const theme = isDark ? darkTheme : lightTheme;
 
   useEffect(() => {
     // Small delay to let Zustand hydrate from AsyncStorage
@@ -32,30 +56,29 @@ export default function RootLayout() {
     }
   }, [hasCompletedOnboarding, segments, isReady]);
 
-  if (!isReady) {
+  if (!isReady || !fontsLoaded) {
     return (
-      <View style={styles.loading}>
-        <StatusBar style="light" />
-        <ActivityIndicator color={colors.primary} size="large" />
+      <View style={[styles.loading, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator color={theme.colors.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <>
-      <StatusBar style="light" />
+    <PaperProvider theme={theme}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
       </Stack>
-    </>
+    </PaperProvider>
   );
 }
 
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },

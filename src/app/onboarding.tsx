@@ -1,16 +1,8 @@
 // src/app/onboarding.tsx
-import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Pressable, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  Easing,
-  runOnJS,
-} from 'react-native-reanimated';
+import { useState, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/theme/colors';
 import { Button } from '@/components/ui';
@@ -41,29 +33,19 @@ const STEPS = [
   },
 ];
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
 export default function OnboardingScreen() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const { completeOnboarding } = useOnboardingStore();
 
-  const translateX = useSharedValue(0);
-  const buttonScale = useSharedValue(1);
-
-  const animatedContentStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
+  const translateX = useRef(new Animated.Value(0)).current;
 
   const goToStep = (step: number) => {
-    translateX.value = withTiming(-step * width, {
+    Animated.timing(translateX, {
+      toValue: -step * width,
       duration: 300,
-      easing: Easing.out(Easing.cubic),
-    });
+      useNativeDriver: true,
+    }).start();
     setCurrentStep(step);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
@@ -94,7 +76,7 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.content}>
-        <Animated.View style={[styles.stepsContainer, animatedContentStyle]}>
+        <Animated.View style={[styles.stepsContainer, { transform: [{ translateX }] }]}>
           {STEPS.map((step, index) => (
             <View key={index} style={styles.step}>
               <Text style={styles.icon}>{step.icon}</Text>
