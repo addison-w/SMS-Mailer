@@ -1,8 +1,9 @@
 // src/app/(tabs)/settings.tsx
-import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
-import { colors } from '@/theme/colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Button, Input, Card, Select } from '@/components/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { testConnection } from '@/services/email-sender';
@@ -14,6 +15,7 @@ const SECURITY_OPTIONS = [
 ];
 
 export default function SettingsScreen() {
+  const theme = useAppTheme();
   const { smtp, setSmtp, savePassword, loadPassword, isConfigured } = useSettingsStore();
   const [password, setPassword] = useState('');
   const [isTesting, setIsTesting] = useState(false);
@@ -72,13 +74,16 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-          <Card title="SMTP Server">
+          <Card title="SMTP SERVER">
             <Input
               label="Host"
               value={smtp.host}
@@ -102,7 +107,7 @@ export default function SettingsScreen() {
             />
           </Card>
 
-          <Card title="Authentication" style={styles.card}>
+          <Card title="AUTHENTICATION" style={styles.card}>
             <Input
               label="Username"
               value={smtp.username}
@@ -115,12 +120,12 @@ export default function SettingsScreen() {
               label="Password"
               value={password}
               onChangeText={setPassword}
-              placeholder="••••••••"
+              placeholder="Enter password"
               secureTextEntry
             />
           </Card>
 
-          <Card title="Email Addresses" style={styles.card}>
+          <Card title="EMAIL ADDRESSES" style={styles.card}>
             <Input
               label="From (Sender)"
               value={smtp.fromEmail}
@@ -145,19 +150,29 @@ export default function SettingsScreen() {
               onPress={handleTestConnection}
               variant="secondary"
               loading={isTesting}
+              accessibilityLabel="Send test email to verify SMTP settings"
             />
             <Button
               title="Save Settings"
               onPress={handleSave}
               loading={isSaving}
               style={styles.saveButton}
+              accessibilityLabel="Save SMTP configuration"
             />
           </View>
 
           {isConfigured && (
-            <Card title="Email Preview" style={styles.card}>
-              <Text style={styles.previewSubject}>Subject: SMS from +61412345678</Text>
-              <Text style={styles.previewBody}>
+            <Card title="EMAIL PREVIEW" style={styles.card} mode="outlined">
+              <Text
+                variant="titleSmall"
+                style={{ color: theme.colors.onSurface, marginBottom: 8 }}
+              >
+                Subject: SMS from +61412345678
+              </Text>
+              <Text
+                variant="bodySmall"
+                style={[styles.previewBody, { color: theme.colors.onSurfaceVariant }]}
+              >
                 From: +61412345678{'\n'}
                 To: +61498765432 (SIM 1){'\n'}
                 Time: {new Date().toLocaleString()}{'\n'}
@@ -176,7 +191,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -198,15 +212,7 @@ const styles = StyleSheet.create({
   saveButton: {
     marginTop: 4,
   },
-  previewSubject: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
   previewBody: {
-    fontSize: 13,
-    color: colors.textSecondary,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     lineHeight: 20,
   },

@@ -1,8 +1,13 @@
 // src/components/features/QueueItemCard.tsx
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text, Button as PaperButton, Card } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { colors } from '@/theme/colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import type { QueueItem } from '@/types';
+
+// M3 semantic colors
+const WARNING_COLOR = '#F59E0B';
 
 interface QueueItemCardProps {
   item: QueueItem;
@@ -11,6 +16,7 @@ interface QueueItemCardProps {
 }
 
 export function QueueItemCard({ item, onRetry, onDismiss }: QueueItemCardProps) {
+  const theme = useAppTheme();
   const [countdown, setCountdown] = useState(0);
   const isPending = item.status === 'pending';
 
@@ -27,56 +33,82 @@ export function QueueItemCard({ item, onRetry, onDismiss }: QueueItemCardProps) 
     return () => clearInterval(interval);
   }, [item.nextRetry, isPending]);
 
-  const truncatedBody = item.sms.body.length > 30
-    ? item.sms.body.substring(0, 30) + '...'
+  const truncatedBody = item.sms.body.length > 50
+    ? item.sms.body.substring(0, 50) + '...'
     : item.sms.body;
 
+  const borderColor = isPending ? WARNING_COLOR + '40' : theme.colors.error + '40';
+
   return (
-    <View style={[styles.card, isPending ? styles.cardPending : styles.cardFailed]}>
-      <View style={styles.header}>
-        <Text style={styles.icon}>{isPending ? '⏳' : '✗'}</Text>
-        <Text style={styles.sender}>{item.sms.sender}</Text>
-      </View>
-      <Text style={styles.body}>"{truncatedBody}"</Text>
-      {isPending ? (
-        <Text style={styles.status}>
-          {countdown > 0 ? `Retry in ${countdown}s` : 'Retrying...'}
+    <Card
+      style={[styles.card, { borderColor }]}
+      mode="outlined"
+      accessibilityLabel={`${isPending ? 'Pending' : 'Failed'} message from ${item.sms.sender}`}
+    >
+      <Card.Content style={styles.content}>
+        <View style={styles.header}>
+          <MaterialCommunityIcons
+            name={isPending ? 'clock-outline' : 'close-circle'}
+            size={20}
+            color={isPending ? WARNING_COLOR : theme.colors.error}
+          />
+          <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+            {item.sms.sender}
+          </Text>
+        </View>
+        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          "{truncatedBody}"
         </Text>
-      ) : (
-        <>
-          <Text style={styles.error}>{item.error}</Text>
-          <Text style={styles.status}>{item.attempts} retries exhausted</Text>
-          <View style={styles.actions}>
-            {onRetry && (
-              <Pressable style={styles.retryButton} onPress={onRetry}>
-                <Text style={styles.retryText}>Retry</Text>
-              </Pressable>
-            )}
-            {onDismiss && (
-              <Pressable style={styles.dismissButton} onPress={onDismiss}>
-                <Text style={styles.dismissText}>Dismiss</Text>
-              </Pressable>
-            )}
-          </View>
-        </>
-      )}
-    </View>
+        {isPending ? (
+          <Text variant="labelSmall" style={[styles.status, { color: theme.colors.onSurfaceVariant }]}>
+            {countdown > 0 ? `Retry in ${countdown}s` : 'Retrying...'}
+          </Text>
+        ) : (
+          <>
+            <Text variant="labelSmall" style={{ color: theme.colors.error, marginTop: 8 }}>
+              {item.error}
+            </Text>
+            <Text variant="labelSmall" style={[styles.status, { color: theme.colors.onSurfaceVariant }]}>
+              {item.attempts} retries exhausted
+            </Text>
+            <View style={styles.actions}>
+              {onRetry && (
+                <PaperButton
+                  mode="contained"
+                  compact
+                  onPress={onRetry}
+                  contentStyle={styles.buttonContent}
+                  accessibilityLabel={`Retry sending message from ${item.sms.sender}`}
+                >
+                  Retry
+                </PaperButton>
+              )}
+              {onDismiss && (
+                <PaperButton
+                  mode="outlined"
+                  compact
+                  onPress={onDismiss}
+                  contentStyle={styles.buttonContent}
+                  accessibilityLabel={`Dismiss failed message from ${item.sms.sender}`}
+                >
+                  Dismiss
+                </PaperButton>
+              )}
+            </View>
+          </>
+        )}
+      </Card.Content>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
   },
-  cardPending: {
-    borderColor: colors.warning + '40',
-  },
-  cardFailed: {
-    borderColor: colors.error + '40',
+  content: {
+    paddingVertical: 12,
   },
   header: {
     flexDirection: 'row',
@@ -84,55 +116,15 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  icon: {
-    fontSize: 16,
-  },
-  sender: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  body: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
   status: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  error: {
-    fontSize: 12,
-    color: colors.error,
-    marginBottom: 4,
+    marginTop: 4,
   },
   actions: {
     flexDirection: 'row',
     gap: 12,
     marginTop: 12,
   },
-  retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  retryText: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  dismissButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  dismissText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
+  buttonContent: {
+    minHeight: 36,
   },
 });

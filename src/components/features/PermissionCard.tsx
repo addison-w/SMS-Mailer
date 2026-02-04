@@ -1,8 +1,14 @@
 // src/components/features/PermissionCard.tsx
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
+import { Text, Button as PaperButton, Surface } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef } from 'react';
-import { colors } from '@/theme/colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
+
+// M3 semantic colors
+const SUCCESS_COLOR = '#22C55E';
+const WARNING_COLOR = '#F59E0B';
 
 interface PermissionCardProps {
   title: string;
@@ -19,8 +25,8 @@ export function PermissionCard({
   actionLabel = 'Enable',
   delay = 0,
 }: PermissionCardProps) {
+  const theme = useAppTheme();
   const scale = useRef(new Animated.Value(1)).current;
-  const buttonScale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const iconScale = useRef(new Animated.Value(granted ? 1 : 0.8)).current;
 
@@ -33,7 +39,7 @@ export function PermissionCard({
       }).start();
     }, delay);
     return () => clearTimeout(timeout);
-  }, []);
+  }, [delay]);
 
   useEffect(() => {
     Animated.sequence([
@@ -51,71 +57,64 @@ export function PermissionCard({
     }
   }, [granted]);
 
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.98,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
-  };
-
   const handleButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Animated.sequence([
-      Animated.spring(buttonScale, {
-        toValue: 0.9,
-        useNativeDriver: true,
-      }),
-      Animated.spring(buttonScale, {
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    ]).start();
     onRequestPermission?.();
   };
 
+  const borderColor = granted ? SUCCESS_COLOR + '30' : theme.colors.outlineVariant;
+  const backgroundColor = granted ? SUCCESS_COLOR + '08' : theme.colors.surface;
+
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        granted ? styles.cardGranted : styles.cardDenied,
-        { opacity, transform: [{ scale }] },
-      ]}
-    >
-      <View style={styles.row}>
-        <Animated.View style={[styles.iconContainer, granted ? styles.iconGranted : styles.iconDenied, { transform: [{ scale: iconScale }] }]}>
-          <Text style={[styles.icon, granted ? styles.iconTextGranted : styles.iconTextDenied]}>
-            {granted ? '✓' : '!'}
-          </Text>
-        </Animated.View>
-        <Text style={styles.title}>{title}</Text>
-      </View>
-      {!granted && onRequestPermission && (
-        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-          <Pressable
-            style={styles.button}
-            onPress={handleButtonPress}
+    <Animated.View style={{ opacity, transform: [{ scale }] }}>
+      <Surface
+        style={[styles.card, { borderColor, backgroundColor }]}
+        elevation={0}
+      >
+        <View style={styles.row}>
+          <Animated.View
+            style={[
+              styles.iconContainer,
+              {
+                backgroundColor: granted ? SUCCESS_COLOR + '20' : WARNING_COLOR + '20',
+                transform: [{ scale: iconScale }],
+              },
+            ]}
           >
-            <Text style={styles.buttonText}>{actionLabel}</Text>
-          </Pressable>
-        </Animated.View>
-      )}
-      {granted && (
-        <Text style={styles.grantedLabel}>Granted</Text>
-      )}
+            <MaterialCommunityIcons
+              name={granted ? 'check' : 'alert'}
+              size={18}
+              color={granted ? SUCCESS_COLOR : WARNING_COLOR}
+            />
+          </Animated.View>
+          <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+            {title}
+          </Text>
+        </View>
+        {!granted && onRequestPermission && (
+          <PaperButton
+            mode="contained"
+            compact
+            onPress={handleButtonPress}
+            labelStyle={styles.buttonLabel}
+            contentStyle={styles.buttonContent}
+            accessibilityLabel={`${actionLabel} ${title} permission`}
+          >
+            {actionLabel}
+          </PaperButton>
+        )}
+        {granted && (
+          <Text variant="labelMedium" style={{ color: SUCCESS_COLOR }}>
+            Granted
+          </Text>
+        )}
+      </Surface>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1,
     padding: 16,
@@ -123,14 +122,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  cardGranted: {
-    borderColor: colors.success + '30',
-    backgroundColor: colors.success + '08',
-  },
-  cardDenied: {
-    borderColor: colors.warning + '30',
-    backgroundColor: colors.surface,
   },
   row: {
     flexDirection: 'row',
@@ -144,41 +135,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconGranted: {
-    backgroundColor: colors.success + '20',
+  buttonContent: {
+    minHeight: 36,
+    paddingHorizontal: 4,
   },
-  iconDenied: {
-    backgroundColor: colors.warning + '20',
-  },
-  icon: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  iconTextGranted: {
-    color: colors.success,
-  },
-  iconTextDenied: {
-    color: colors.warning,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: colors.textPrimary,
+  buttonLabel: {
     fontSize: 13,
-    fontWeight: '600',
-  },
-  grantedLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.success,
+    marginVertical: 0,
   },
 });

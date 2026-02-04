@@ -1,9 +1,10 @@
 // src/app/(tabs)/index.tsx
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Alert, Animated } from 'react-native';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { colors } from '@/theme/colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Card, Button } from '@/components/ui';
 import { PermissionCard } from '@/components/features/PermissionCard';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -12,14 +13,18 @@ import { useHistoryStore } from '@/stores/history';
 import { useSettingsStore } from '@/stores/settings';
 import { startBackgroundService, stopBackgroundService } from '@/services/background';
 
+// M3 semantic color for success state (green)
+const SUCCESS_COLOR = '#22C55E';
+const WARNING_COLOR = '#F59E0B';
+
 export default function StatusScreen() {
+  const theme = useAppTheme();
   const router = useRouter();
-  const { isRunning, setRunning } = useServiceStore();
+  const { isRunning } = useServiceStore();
   const { isConfigured } = useSettingsStore();
   const { getPending, getFailed, totalForwarded } = useHistoryStore();
   const {
     permissions,
-    isLoading,
     requestSmsPermission,
     requestNotifications,
     requestBatteryOptimization,
@@ -109,22 +114,35 @@ export default function StatusScreen() {
     permissions.sms && permissions.notifications && permissions.batteryOptimization;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {/* Hero Service Status */}
         <Card delay={0}>
           <View style={styles.heroContainer}>
             <View style={styles.statusIndicatorContainer}>
               {isRunning && (
-                <Animated.View style={[styles.pulse, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]} />
+                <Animated.View
+                  style={[
+                    styles.pulse,
+                    { backgroundColor: SUCCESS_COLOR, transform: [{ scale: pulseScale }], opacity: pulseOpacity },
+                  ]}
+                />
               )}
-              <View style={[styles.statusDot, isRunning ? styles.dotRunning : styles.dotStopped]} />
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: isRunning ? SUCCESS_COLOR : theme.colors.outlineVariant },
+                ]}
+              />
             </View>
             <View style={styles.heroText}>
-              <Text style={styles.heroTitle}>
+              <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
                 {isRunning ? 'Service Active' : 'Service Stopped'}
               </Text>
-              <Text style={styles.heroSubtitle}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                 {isRunning
                   ? 'Forwarding SMS to email'
                   : isConfigured
@@ -138,32 +156,61 @@ export default function StatusScreen() {
             onPress={handleToggleService}
             variant={isRunning ? 'danger' : 'primary'}
             disabled={!allPermissionsGranted && isConfigured}
+            accessibilityLabel={
+              isRunning
+                ? 'Stop SMS forwarding service'
+                : isConfigured
+                  ? 'Start SMS forwarding service'
+                  : 'Go to settings to configure SMTP'
+            }
           />
           {isConfigured && !allPermissionsGranted && (
-            <Text style={styles.hint}>Grant all permissions below to start</Text>
+            <Text
+              variant="bodySmall"
+              style={[styles.hint, { color: WARNING_COLOR }]}
+            >
+              Grant all permissions below to start
+            </Text>
           )}
         </Card>
 
         {/* Quick Stats */}
-        <Pressable onPress={handleStatsPress}>
-          <Animated.View style={{ transform: [{ scale: statsScale }] }}>
+        <Pressable
+          onPress={handleStatsPress}
+          accessibilityRole="button"
+          accessibilityLabel={`View history. ${totalForwarded} forwarded, ${pendingCount} pending, ${failedCount} failed`}
+        >
+          <Animated.View style={[styles.statsCard, { transform: [{ scale: statsScale }] }]}>
             <Card delay={100}>
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{totalForwarded}</Text>
-                  <Text style={styles.statLabel}>Forwarded</Text>
+                  <Text variant="displaySmall" style={{ color: theme.colors.onSurface }}>
+                    {totalForwarded}
+                  </Text>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    FORWARDED
+                  </Text>
                 </View>
-                <View style={styles.statDivider} />
+                <View style={[styles.statDivider, { backgroundColor: theme.colors.outlineVariant }]} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, styles.statPending]}>{pendingCount}</Text>
-                  <Text style={styles.statLabel}>Pending</Text>
+                  <Text variant="displaySmall" style={{ color: WARNING_COLOR }}>
+                    {pendingCount}
+                  </Text>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    PENDING
+                  </Text>
                 </View>
-                <View style={styles.statDivider} />
+                <View style={[styles.statDivider, { backgroundColor: theme.colors.outlineVariant }]} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, failedCount > 0 && styles.statError]}>
+                  <Text
+                    variant="displaySmall"
+                    style={{ color: failedCount > 0 ? theme.colors.error : theme.colors.onSurface }}
+                  >
                     {failedCount}
                   </Text>
-                  <Text style={styles.statLabel}>Failed</Text>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    FAILED
+                  </Text>
                 </View>
               </View>
             </Card>
@@ -171,8 +218,18 @@ export default function StatusScreen() {
         </Pressable>
 
         {/* Permissions */}
-        <Text style={styles.sectionTitle}>PERMISSIONS</Text>
-        <Text style={styles.sectionSubtitle}>Required for reliable SMS forwarding</Text>
+        <Text
+          variant="labelMedium"
+          style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}
+        >
+          PERMISSIONS
+        </Text>
+        <Text
+          variant="bodySmall"
+          style={[styles.sectionSubtitle, { color: theme.colors.onSurfaceVariant }]}
+        >
+          Required for reliable SMS forwarding
+        </Text>
 
         <PermissionCard
           title="SMS Access"
@@ -205,7 +262,6 @@ export default function StatusScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -231,37 +287,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.success,
   },
   statusDot: {
     width: 40,
     height: 40,
     borderRadius: 20,
   },
-  dotRunning: {
-    backgroundColor: colors.success,
-  },
-  dotStopped: {
-    backgroundColor: colors.textMuted,
-  },
   heroText: {
     flex: 1,
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
+    gap: 4,
   },
   hint: {
-    fontSize: 13,
-    color: colors.warning,
     textAlign: 'center',
+    marginTop: 12,
+  },
+  statsCard: {
     marginTop: 12,
   },
   statsContainer: {
@@ -273,41 +313,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 4,
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  statPending: {
-    color: colors.warning,
-  },
-  statError: {
-    color: colors.error,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.textMuted,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   statDivider: {
     width: 1,
     height: 36,
-    backgroundColor: colors.border,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
     letterSpacing: 1,
     marginTop: 28,
     marginBottom: 4,
   },
   sectionSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
     marginBottom: 16,
   },
 });

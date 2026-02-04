@@ -1,12 +1,18 @@
 // src/app/(tabs)/history.tsx
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme/colors';
-import { Card, Button } from '@/components/ui';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { Button } from '@/components/ui';
 import { QueueItemCard } from '@/components/features/QueueItemCard';
 import { useHistoryStore } from '@/stores/history';
 
+// M3 semantic color for success state
+const SUCCESS_COLOR = '#22C55E';
+
 export default function HistoryScreen() {
+  const theme = useAppTheme();
   const {
     totalForwarded,
     getPending,
@@ -21,16 +27,32 @@ export default function HistoryScreen() {
   const hasItems = pending.length > 0 || failed.length > 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {!hasItems ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>✓</Text>
-            <Text style={styles.emptyTitle}>All Clear</Text>
-            <Text style={styles.emptySubtitle}>
+          <View style={styles.emptyState} accessibilityRole="text">
+            <MaterialCommunityIcons
+              name="check-circle"
+              size={64}
+              color={SUCCESS_COLOR}
+              style={styles.emptyIcon}
+            />
+            <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+              All Clear
+            </Text>
+            <Text
+              variant="bodyLarge"
+              style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}
+            >
               No pending or failed messages
             </Text>
-            <Text style={styles.successCount}>
+            <Text
+              variant="bodyMedium"
+              style={{ color: theme.colors.onSurfaceVariant }}
+            >
               {totalForwarded} forwarded successfully
             </Text>
           </View>
@@ -38,7 +60,12 @@ export default function HistoryScreen() {
           <>
             {pending.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>PENDING ({pending.length})</Text>
+                <Text
+                  variant="labelLarge"
+                  style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  PENDING ({pending.length})
+                </Text>
                 {pending.map((item) => (
                   <QueueItemCard key={item.id} item={item} />
                 ))}
@@ -47,7 +74,12 @@ export default function HistoryScreen() {
 
             {failed.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>FAILED ({failed.length})</Text>
+                <Text
+                  variant="labelLarge"
+                  style={[styles.sectionTitle, { color: theme.colors.error }]}
+                >
+                  FAILED ({failed.length})
+                </Text>
                 {failed.map((item) => (
                   <QueueItemCard
                     key={item.id}
@@ -61,14 +93,25 @@ export default function HistoryScreen() {
                   onPress={clearFailed}
                   variant="secondary"
                   style={styles.clearButton}
+                  accessibilityLabel={`Clear all ${failed.length} failed messages`}
                 />
               </>
             )}
 
-            <View style={styles.divider} />
-            <Text style={styles.successText}>
-              ✓ {totalForwarded} messages forwarded successfully
-            </Text>
+            <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
+            <View style={styles.successRow}>
+              <MaterialCommunityIcons
+                name="check-circle"
+                size={20}
+                color={SUCCESS_COLOR}
+              />
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSurfaceVariant, marginLeft: 8 }}
+              >
+                {totalForwarded} messages forwarded successfully
+              </Text>
+            </View>
           </>
         )}
       </ScrollView>
@@ -79,7 +122,6 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -95,29 +137,13 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyIcon: {
-    fontSize: 48,
-    color: colors.success,
     marginBottom: 16,
   },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
   emptySubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
+    marginTop: 8,
     marginBottom: 24,
   },
-  successCount: {
-    fontSize: 14,
-    color: colors.textMuted,
-  },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
     letterSpacing: 0.5,
     marginBottom: 12,
     marginTop: 8,
@@ -127,12 +153,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
     marginVertical: 24,
   },
-  successText: {
-    fontSize: 14,
-    color: colors.textMuted,
-    textAlign: 'center',
+  successRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

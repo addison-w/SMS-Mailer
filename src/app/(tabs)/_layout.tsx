@@ -1,35 +1,53 @@
 // src/app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
-import { Text, StyleSheet } from 'react-native';
-import { colors } from '@/theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
+
+type IconName = 'home' | 'home-outline' | 'cog' | 'cog-outline' | 'history';
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    index: '●',
-    settings: '⚙',
-    history: '☰',
+  const theme = useAppTheme();
+
+  const icons: Record<string, { active: IconName; inactive: IconName }> = {
+    index: { active: 'home', inactive: 'home-outline' },
+    settings: { active: 'cog', inactive: 'cog-outline' },
+    history: { active: 'history', inactive: 'history' },
   };
+
+  const iconConfig = icons[name] || { active: 'home', inactive: 'home-outline' };
+
   return (
-    <Text style={[styles.icon, focused && styles.iconFocused]}>
-      {icons[name] || '○'}
-    </Text>
+    <MaterialCommunityIcons
+      name={focused ? iconConfig.active : iconConfig.inactive}
+      size={24}
+      color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant}
+    />
   );
 }
 
 export default function TabLayout() {
+  const theme = useAppTheme();
+
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.textPrimary,
+        headerStyle: { backgroundColor: theme.colors.surface },
+        headerTintColor: theme.colors.onSurface,
         headerTitleStyle: { fontWeight: '600' },
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.outlineVariant,
           borderTopWidth: 1,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 8,
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+        tabBarLabelStyle: {
+          fontFamily: 'Roboto_500Medium',
+          fontSize: 12,
+        },
       }}
     >
       <Tabs.Screen
@@ -38,6 +56,7 @@ export default function TabLayout() {
           title: 'Status',
           headerTitle: 'SMS Mailer',
           tabBarIcon: ({ focused }) => <TabIcon name="index" focused={focused} />,
+          tabBarAccessibilityLabel: 'Status tab',
         }}
       />
       <Tabs.Screen
@@ -45,6 +64,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
+          tabBarAccessibilityLabel: 'Settings tab',
         }}
       />
       <Tabs.Screen
@@ -52,18 +72,9 @@ export default function TabLayout() {
         options={{
           title: 'History',
           tabBarIcon: ({ focused }) => <TabIcon name="history" focused={focused} />,
+          tabBarAccessibilityLabel: 'History tab',
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: {
-    fontSize: 20,
-    color: colors.textMuted,
-  },
-  iconFocused: {
-    color: colors.primary,
-  },
-});
