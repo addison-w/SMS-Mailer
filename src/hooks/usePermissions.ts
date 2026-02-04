@@ -10,6 +10,7 @@ export function usePermissions() {
     sms: false,
     notifications: false,
     batteryOptimization: false,
+    backgroundActivity: false,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -27,10 +28,14 @@ export function usePermissions() {
       // User needs to manually verify
       const batteryOptDisabled = false;
 
+      // Background activity - also needs manual verification
+      const backgroundActivityAllowed = false;
+
       setPermissions({
         sms: smsGranted,
         notifications: notifStatus === 'granted',
         batteryOptimization: batteryOptDisabled,
+        backgroundActivity: backgroundActivityAllowed,
       });
     } catch (error) {
       console.error('Error checking permissions:', error);
@@ -99,6 +104,30 @@ export function usePermissions() {
     );
   };
 
+  const requestBackgroundActivity = async () => {
+    if (Platform.OS !== 'android') return;
+
+    Alert.alert(
+      'Background Activity',
+      'To allow SMS Mailer to run in the background, please set background activity to "Unrestricted" in the app settings.\n\nGo to: Battery → Unrestricted',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open Settings',
+          onPress: async () => {
+            try {
+              await Linking.openSettings();
+              // Assume user enabled it after opening settings
+              setPermissions((prev) => ({ ...prev, backgroundActivity: true }));
+            } catch (error) {
+              Alert.alert('Error', 'Unable to open settings');
+            }
+          }
+        },
+      ]
+    );
+  };
+
   return {
     permissions,
     isLoading,
@@ -106,5 +135,6 @@ export function usePermissions() {
     requestNotifications,
     requestSmsPermission,
     requestBatteryOptimization,
+    requestBackgroundActivity,
   };
 }

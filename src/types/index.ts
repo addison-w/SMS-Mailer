@@ -37,6 +37,7 @@ export interface PermissionStatus {
   sms: boolean;
   notifications: boolean;
   batteryOptimization: boolean;
+  backgroundActivity: boolean;
 }
 
 // Service Status

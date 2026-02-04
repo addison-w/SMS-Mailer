@@ -28,6 +28,7 @@ export default function StatusScreen() {
     requestSmsPermission,
     requestNotifications,
     requestBatteryOptimization,
+    requestBackgroundActivity,
   } = usePermissions();
 
   const pendingCount = getPending().length;
@@ -111,7 +112,7 @@ export default function StatusScreen() {
   };
 
   const allPermissionsGranted =
-    permissions.sms && permissions.notifications && permissions.batteryOptimization;
+    permissions.sms && permissions.notifications && permissions.batteryOptimization && permissions.backgroundActivity;
 
   return (
     <SafeAreaView
@@ -253,6 +254,14 @@ export default function StatusScreen() {
           onRequestPermission={requestBatteryOptimization}
           actionLabel="Disable"
           delay={300}
+        />
+
+        <PermissionCard
+          title="Background Activity"
+          granted={permissions.backgroundActivity}
+          onRequestPermission={requestBackgroundActivity}
+          actionLabel="Allow"
+          delay={350}
         />
       </ScrollView>
     </SafeAreaView>
