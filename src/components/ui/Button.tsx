@@ -1,8 +1,9 @@
 // src/components/ui/Button.tsx
-import { Text, StyleSheet, ActivityIndicator, ViewStyle, Pressable, Animated } from 'react-native';
+import { StyleSheet, ViewStyle, Animated } from 'react-native';
+import { Button as PaperButton } from 'react-native-paper';
 import { useRef } from 'react';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme/colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface ButtonProps {
   title: string;
@@ -11,6 +12,8 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
+  icon?: string;
+  accessibilityLabel?: string;
 }
 
 export function Button({
@@ -20,13 +23,16 @@ export function Button({
   disabled = false,
   loading = false,
   style,
+  icon,
+  accessibilityLabel,
 }: ButtonProps) {
+  const theme = useAppTheme();
   const scale = useRef(new Animated.Value(1)).current;
   const isDisabled = disabled || loading;
 
   const handlePressIn = () => {
     Animated.spring(scale, {
-      toValue: 0.96,
+      toValue: 0.97,
       useNativeDriver: true,
     }).start();
   };
@@ -43,65 +49,60 @@ export function Button({
     onPress();
   };
 
+  // Map variants to Paper button modes and colors
+  const getButtonProps = () => {
+    switch (variant) {
+      case 'secondary':
+        return {
+          mode: 'outlined' as const,
+          textColor: theme.colors.primary,
+        };
+      case 'danger':
+        return {
+          mode: 'contained' as const,
+          buttonColor: theme.colors.error,
+          textColor: theme.colors.onError,
+        };
+      default: // primary
+        return {
+          mode: 'contained' as const,
+          buttonColor: theme.colors.primary,
+          textColor: theme.colors.onPrimary,
+        };
+    }
+  };
+
+  const buttonProps = getButtonProps();
+
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <Pressable
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <PaperButton
+        {...buttonProps}
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={isDisabled}
-        style={[
-          styles.button,
-          styles[variant],
-          isDisabled && styles.disabled,
-          style,
-        ]}
+        loading={loading}
+        icon={icon}
+        contentStyle={styles.content}
+        labelStyle={styles.label}
+        accessibilityLabel={accessibilityLabel || title}
+        accessibilityRole="button"
       >
-        {loading ? (
-          <ActivityIndicator color={variant === 'secondary' ? colors.primary : colors.textPrimary} />
-        ) : (
-          <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
-        )}
-      </Pressable>
+        {title}
+      </PaperButton>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
+  content: {
+    minHeight: 48, // M3 touch target minimum
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
-  primary: {
-    backgroundColor: colors.primary,
-  },
-  secondary: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  danger: {
-    backgroundColor: colors.error,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  primaryText: {
-    color: colors.textPrimary,
-  },
-  secondaryText: {
-    color: colors.textPrimary,
-  },
-  dangerText: {
-    color: colors.textPrimary,
+  label: {
+    fontWeight: '500',
+    letterSpacing: 0.1,
   },
 });

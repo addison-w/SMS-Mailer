@@ -1,16 +1,29 @@
 // src/components/ui/Card.tsx
-import { Text, StyleSheet, ViewStyle, Animated } from 'react-native';
+import { StyleSheet, ViewStyle, Animated, View } from 'react-native';
+import { Card as PaperCard, Text } from 'react-native-paper';
 import { useEffect, useRef } from 'react';
-import { colors } from '@/theme/colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface CardProps {
   title?: string;
   children: React.ReactNode;
   style?: ViewStyle;
   delay?: number;
+  mode?: 'elevated' | 'outlined' | 'contained';
+  onPress?: () => void;
+  accessibilityLabel?: string;
 }
 
-export function Card({ title, children, style, delay = 0 }: CardProps) {
+export function Card({
+  title,
+  children,
+  style,
+  delay = 0,
+  mode = 'outlined',
+  onPress,
+  accessibilityLabel,
+}: CardProps) {
+  const theme = useAppTheme();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
 
@@ -30,34 +43,48 @@ export function Card({ title, children, style, delay = 0 }: CardProps) {
       ]).start();
     }, delay);
     return () => clearTimeout(timeout);
-  }, []);
+  }, [delay]);
+
+  const cardContent = (
+    <>
+      {title && (
+        <Text
+          variant="labelMedium"
+          style={[styles.title, { color: theme.colors.onSurfaceVariant }]}
+        >
+          {title}
+        </Text>
+      )}
+      {children}
+    </>
+  );
 
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        { opacity, transform: [{ translateY }] },
-        style,
-      ]}
-    >
-      {title && <Text style={styles.title}>{title}</Text>}
-      {children}
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      <PaperCard
+        mode={mode}
+        style={[styles.card, style]}
+        onPress={onPress}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole={onPress ? 'button' : undefined}
+      >
+        <PaperCard.Content style={styles.content}>
+          {cardContent}
+        </PaperCard.Content>
+      </PaperCard>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
+  },
+  content: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
     marginBottom: 16,
     textTransform: 'uppercase',
     letterSpacing: 1,

@@ -1,7 +1,9 @@
 // src/components/ui/Select.tsx
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Menu, Text, TouchableRipple } from 'react-native-paper';
 import { useState } from 'react';
-import { colors } from '@/theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface SelectOption {
   label: string;
@@ -17,101 +19,108 @@ interface SelectProps {
 
 export function Select({ label, value, options, onValueChange }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const theme = useAppTheme();
   const selectedOption = options.find((opt) => opt.value === value);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <Pressable
-        style={styles.select}
-        onPress={() => setIsOpen(!isOpen)}
+      <Text
+        variant="bodySmall"
+        style={[styles.label, { color: theme.colors.onSurfaceVariant }]}
       >
-        <Text style={styles.selectText}>{selectedOption?.label || 'Select...'}</Text>
-        <Text style={styles.arrow}>{isOpen ? '▲' : '▼'}</Text>
-      </Pressable>
-      {isOpen && (
-        <View style={styles.dropdown}>
-          {options.map((option) => (
-            <Pressable
-              key={option.value}
-              style={[
-                styles.option,
-                option.value === value && styles.optionSelected,
-              ]}
-              onPress={() => {
-                onValueChange(option.value);
-                setIsOpen(false);
-              }}
-            >
+        {label}
+      </Text>
+      <Menu
+        visible={isOpen}
+        onDismiss={() => setIsOpen(false)}
+        anchor={
+          <TouchableRipple
+            onPress={() => setIsOpen(true)}
+            style={[
+              styles.select,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: theme.colors.outline,
+              },
+            ]}
+            accessibilityRole="combobox"
+            accessibilityLabel={`${label}: ${selectedOption?.label || 'Select'}`}
+            accessibilityState={{ expanded: isOpen }}
+          >
+            <View style={styles.selectInner}>
               <Text
-                style={[
-                  styles.optionText,
-                  option.value === value && styles.optionTextSelected,
-                ]}
+                variant="bodyLarge"
+                style={{ color: theme.colors.onSurface }}
               >
-                {option.label}
+                {selectedOption?.label || 'Select...'}
               </Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
+              <MaterialCommunityIcons
+                name={isOpen ? 'chevron-up' : 'chevron-down'}
+                size={24}
+                color={theme.colors.onSurfaceVariant}
+              />
+            </View>
+          </TouchableRipple>
+        }
+        contentStyle={[
+          styles.menuContent,
+          { backgroundColor: theme.colors.elevation.level2 },
+        ]}
+      >
+        {options.map((option) => (
+          <Menu.Item
+            key={option.value}
+            onPress={() => {
+              onValueChange(option.value);
+              setIsOpen(false);
+            }}
+            title={option.label}
+            titleStyle={
+              option.value === value
+                ? { color: theme.colors.primary, fontWeight: '500' }
+                : undefined
+            }
+            leadingIcon={
+              option.value === value
+                ? () => (
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={20}
+                      color={theme.colors.primary}
+                    />
+                  )
+                : undefined
+            }
+          />
+        ))}
+      </Menu>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-    zIndex: 1,
-  },
-  label: {
-    fontSize: 14,
-    color: colors.textSecondary,
     marginBottom: 8,
   },
+  label: {
+    marginBottom: 8,
+    marginLeft: 4,
+  },
   select: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 12,
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  selectInner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  selectText: {
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  arrow: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  dropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: colors.elevated,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    marginTop: 4,
-    overflow: 'hidden',
-  },
-  option: {
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  optionSelected: {
-    backgroundColor: colors.primary + '20',
-  },
-  optionText: {
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  optionTextSelected: {
-    color: colors.primary,
+  menuContent: {
+    borderRadius: 12,
+    marginTop: 4,
   },
 });
