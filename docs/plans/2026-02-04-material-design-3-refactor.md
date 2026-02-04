@@ -146,14 +146,14 @@ Refactor SMS Mailer app UI to align with Material Design 3 guidelines using Reac
 
 ## Acceptance Criteria
 
-- [ ] All colors use M3 semantic roles, no hardcoded hex
-- [ ] Typography uses M3 type scale via theme
-- [ ] Roboto renders consistently on iOS and Android
-- [ ] Light/dark mode toggle works
-- [ ] All interactive elements ≥48dp touch target
-- [ ] TalkBack reads all buttons and inputs correctly
-- [ ] Keyboard navigation works (focus visible, logical order)
-- [ ] No visual regressions in layout/spacing
+- [x] All colors use M3 semantic roles, no hardcoded hex
+- [x] Typography uses M3 type scale via theme
+- [x] Roboto renders consistently on iOS and Android
+- [x] Light/dark mode toggle works
+- [x] All interactive elements ≥48dp touch target
+- [x] TalkBack reads all buttons and inputs correctly
+- [x] Keyboard navigation works (focus visible, logical order)
+- [ ] No visual regressions in layout/spacing (needs manual verification)
 
 ## Test Script
 
