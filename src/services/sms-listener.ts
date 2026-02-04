@@ -4,6 +4,7 @@ import {
   requestReadSMSPermission,
   startReadSMS,
 } from '@maniac-tech/react-native-expo-read-sms';
+import { getReceiverPhoneNumber, getSimSlotLabel } from '@/services/sim-info';
 import type { SmsMessage } from '@/types';
 
 export interface SmsPermissionStatus {
@@ -47,7 +48,7 @@ export function startSmsListener(
   smsListenerActive = true;
 
   startReadSMS(
-    (status: string, smsData: string) => {
+    async (status: string, smsData: string) => {
       try {
         // smsData format: "[+919999999999, this is a sample message body]"
         const match = smsData.match(/\[(.+?),\s*(.+)\]/);
@@ -55,13 +56,19 @@ export function startSmsListener(
           const sender = match[1];
           const body = match[2];
 
+          // Get receiver number from SIM card info
+          // Note: Only works reliably for single-SIM devices
+          // Dual-SIM devices will show "Unknown" since Android's SMS_RECEIVED
+          // broadcast doesn't indicate which SIM received the message
+          const receiverNumber = await getReceiverPhoneNumber();
+
           const sms: SmsMessage = {
             id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             sender,
             body,
             timestamp: Date.now(),
-            simSlot: 0, // TODO: Get actual SIM slot if available
-            receiverNumber: 'Unknown', // TODO: Get actual receiver number
+            simSlot: 0,
+            receiverNumber,
           };
 
           onSmsReceived(sms);

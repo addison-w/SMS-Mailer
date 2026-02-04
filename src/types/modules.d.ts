@@ -1,5 +1,37 @@
 // Type declarations for external modules without TypeScript support
 
+declare module 'react-native-sim-cards-manager' {
+  interface SimCardRationale {
+    title: string;
+    message: string;
+    buttonNeutral: string;
+    buttonNegative: string;
+    buttonPositive: string;
+  }
+
+  interface SimCard {
+    carrierName?: string;
+    displayName?: string;
+    isoCountryCode?: string;
+    mobileCountryCode?: string;
+    mobileNetworkCode?: string;
+    isNetworkRoaming?: boolean;
+    isDataRoaming?: boolean;
+    simSlotIndex?: number;
+    phoneNumber?: string;
+    simSerialNumber?: string;
+    subscriptionId?: number;
+  }
+
+  const SimCardsManagerModule: {
+    getSimCards(rationale?: SimCardRationale): Promise<SimCard[]>;
+    getSimCardsNative(): Promise<SimCard[]>;
+    isEsimSupported(): Promise<boolean>;
+  };
+
+  export default SimCardsManagerModule;
+}
+
 declare module 'react-native-battery-optimization-check' {
   export function BatteryOptEnabled(): Promise<boolean>;
   export function OpenOptimizationSettings(): void;
