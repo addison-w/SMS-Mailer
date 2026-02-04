@@ -3,20 +3,32 @@ const { withAndroidManifest } = require('@expo/config-plugins');
 
 module.exports = function withSmsMailerPermissions(config) {
   return withAndroidManifest(config, async (config) => {
-    const androidManifest = config.modResults;
-    const mainApplication = androidManifest.manifest.application[0];
+    try {
+      const androidManifest = config.modResults;
 
-    // Add receiver for SMS
-    if (!mainApplication.receiver) {
-      mainApplication.receiver = [];
-    }
+      // Validate manifest structure
+      if (!androidManifest.manifest.application?.[0]) {
+        console.warn('SMS Mailer plugin: No application element found in AndroidManifest');
+        return config;
+      }
 
-    // Add intent filter for deep linking
-    const mainActivity = mainApplication.activity.find(
-      (activity) => activity.$['android:name'] === '.MainActivity'
-    );
+      const mainApplication = androidManifest.manifest.application[0];
 
-    if (mainActivity) {
+      // Add intent filter for deep linking
+      if (!mainApplication.activity) {
+        console.warn('SMS Mailer plugin: No activity array found');
+        return config;
+      }
+
+      const mainActivity = mainApplication.activity.find(
+        (activity) => activity.$['android:name'] === '.MainActivity'
+      );
+
+      if (!mainActivity) {
+        console.warn('SMS Mailer plugin: MainActivity not found');
+        return config;
+      }
+
       if (!mainActivity['intent-filter']) {
         mainActivity['intent-filter'] = [];
       }
@@ -29,8 +41,11 @@ module.exports = function withSmsMailerPermissions(config) {
         ],
         data: [{ $: { 'android:scheme': 'smsmailer' } }],
       });
-    }
 
-    return config;
+      return config;
+    } catch (error) {
+      console.warn('SMS Mailer plugin error:', error.message);
+      return config;
+    }
   });
 };
