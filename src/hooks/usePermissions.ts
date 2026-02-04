@@ -63,8 +63,11 @@ export function usePermissions() {
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        // App has come to foreground, re-check permissions
-        checkPermissions();
+        // App has come to foreground, re-check permissions after brief delay
+        // to ensure system has updated permission state
+        setTimeout(() => {
+          checkPermissions();
+        }, 300);
       }
       appState.current = nextAppState;
     };
@@ -74,17 +77,14 @@ export function usePermissions() {
   }, [checkPermissions]);
 
   const requestNotifications = async () => {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status === 'granted') {
-      setPermissions((prev) => ({ ...prev, notifications: true }));
-    }
-    // Re-check to get accurate state
+    await Notifications.requestPermissionsAsync();
+    // Always re-check to get accurate state from system
     await checkPermissions();
   };
 
   const requestSmsPermission = async () => {
     await requestSmsPermissions();
-    // Re-check to get accurate state
+    // Always re-check to get accurate state from system
     await checkPermissions();
   };
 
