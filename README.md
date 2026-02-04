@@ -13,13 +13,6 @@ Built with React Native and Expo for reliable background operation.
 - **Material Design 3** - Modern UI with light/dark/system theme support
 - **Dual SIM support** - Identifies which SIM received the message
 
-## Screenshots
-
-<!-- TODO: Add screenshots -->
-| Status | Settings | History |
-|--------|----------|---------|
-| ![Status](docs/screenshots/status.png) | ![Settings](docs/screenshots/settings.png) | ![History](docs/screenshots/history.png) |
-
 ## Requirements
 
 - Android 8.0+ (API level 26)
